@@ -8,7 +8,7 @@ defmodule Alertas.AlertaStore do
   end
 
   # Nombre global para que exista una sola instancia en todo el clúster
-  def via, do: {:via, Horde.Registry, {Alerta.Registry, :flight_store}}
+  def via, do: {:via, Horde.Registry, {Alertas.Registry, :alerta_store}}
 
   # --- Escritura ---
 

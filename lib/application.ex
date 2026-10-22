@@ -10,7 +10,10 @@ defmodule IascHordeExample.Application do
     children = [
       {Cluster.Supervisor, [topologies(), [name: MinimalExample.ClusterSupervisor]]}, #libcluster
 
-      CustomIASC.HordeRegistry, # horde registry
+
+      Supervisor.child_spec({CustomIASC.HordeRegistry, [name: Vuelos.Registry]}, id: :vuelos_registry),
+      Supervisor.child_spec({CustomIASC.HordeRegistry, [name: Alertas.Registry]}, id: :alertas_registry),
+
       # https://hexdocs.pm/horde/Horde.UniformQuorumDistribution.html
       {CustomIASC.HordeSupervisor,
         [strategy: :one_for_one,
@@ -19,7 +22,17 @@ defmodule IascHordeExample.Application do
       ]
         },
 
-      CustomIASC.NodeObserver.Supervisor # node supervisor. Not from Horde
+      CustomIASC.NodeObserver.Supervisor, # node supervisor. Not from Horde
+
+      {Task, fn ->
+        for store <- [Vuelos.VueloStore, Alertas.AlertaStore] do
+          case Horde.DynamicSupervisor.start_child(CustomIASC.HordeSupervisor, store) do
+            {:ok, _pid} -> :ok
+            {:error, {:already_started, _pid}} -> :ok
+            other -> IO.inspect(other, label: "start_child #{inspect(store)}")
+          end
+        end
+      end}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html for other strategies and supported options

@@ -2,9 +2,11 @@ defmodule CustomIASC.NodeObserver do
   use GenServer
   require Logger
 
-  alias CustomIASC.{HordeRegistry, HordeSupervisor}
+  alias CustomIASC.HordeSupervisor
 
-  def start_link(_)do
+  @registries [Vuelos.Registry, Alertas.Registry]
+
+  def start_link(_) do
     GenServer.start_link(__MODULE__, %{})
   end
 
@@ -17,29 +19,37 @@ defmodule CustomIASC.NodeObserver do
   end
 
   @impl GenServer
-  @doc """
-  Handler that will be called when a node has left the cluster.
-  """
   def handle_info({:nodedown, node, _node_type}, state) do
     Logger.info("---- Node down: #{node} ----")
-    set_members(HordeRegistry)
-    set_members(HordeSupervisor)
-
+    update_all_members()
     {:noreply, state}
   end
 
-  @impl GenServer
   def handle_info({:nodeup, node, _node_type}, state) do
     Logger.info("---- Node up: #{node} ----")
-    set_members(HordeRegistry)
-    set_members(HordeSupervisor)
-
+    update_all_members()
     {:noreply, state}
+  end
+
+  def handle_info(_msg, state), do: {:noreply, state}
+
+  defp update_all_members do
+    for name <- @registries ++ [HordeSupervisor] do
+      set_members(name)
+    end
   end
 
   defp set_members(name) do
-    members = Enum.map([Node.self() | Node.list()], &{name, &1})
+    nodes =
+      [Node.self() | Node.list()]
+      |> Enum.reject(&observer_node?/1)
+
+    members = Enum.map(nodes, &{name, &1})
 
     :ok = Horde.Cluster.set_members(name, members)
+  end
+
+  defp observer_node?(node) do
+    node |> Atom.to_string() |> String.starts_with?("observer@")
   end
 end

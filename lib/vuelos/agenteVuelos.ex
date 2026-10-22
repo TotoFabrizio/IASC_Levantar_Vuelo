@@ -8,7 +8,7 @@ defmodule Vuelos.VueloStore do
   end
 
   # Nombre global para que exista una sola instancia en todo el clúster
-  def via, do: {:via, Horde.Registry, {Vuelos.Registry, :flight_store}}
+  def via, do: {:via, Horde.Registry, {Vuelos.Registry, :vuelo_store}}
 
   # --- Escritura ---
 
